@@ -1,0 +1,15 @@
+services:
+
+  tickethotel:
+
+    image: nginx:alpine
+
+    container_name: tickethotel_app
+
+    ports:
+      - "80:80"
+
+    volumes:
+      - ./app:/usr/share/nginx/html
+
+    restart: always

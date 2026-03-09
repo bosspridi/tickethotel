@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TicketHotel - Simulation Avancée</title>
+<style>
+  /* 🌗 Variables Thèmes */
+  :root {
+    --primary: #4f46e5;
+    --background: #f9fafb;
+    --text: #111827;
+    --card-bg: #ffffff;
+    --status-pending: #facc15;
+    --status-assigned: #3b82f6;
+    --status-resolved: #10b981;
+    --sidebar-bg: #ffffff;
+    --sidebar-text: #111827;
+  }
+  [data-theme="dark"] {
+    --background: #1f2937;
+    --text: #f9fafb;
+    --card-bg: #374151;
+    --status-pending: #f59e0b;
+    --status-assigned: #2563eb;
+    --status-resolved: #059669;
+    --sidebar-bg: #111827;
+    --sidebar-text: #f9fafb;
+  }
+
+  * { box-sizing: border-box; font-family: Arial, sans-serif; transition:0.3s; }
+  body { margin:0; display:flex; background:var(--background); color:var(--text); }
+
+  /* Sidebar */
+  nav { width:220px; background:var(--sidebar-bg); display:flex; flex-direction:column; padding:20px; box-shadow:2px 0 5px rgba(0,0,0,0.1);}
+  nav h2 { color:var(--primary); font-size:1.5rem; margin-bottom:30px; text-align:center;}
+  nav .user { margin-bottom:20px; font-weight:bold; text-align:center;}
+  nav button { margin-bottom:10px; padding:10px; border:none; border-radius:8px; cursor:pointer; background:var(--primary); color:#fff; width:100%; transition:0.2s;}
+  nav button:hover { background:#3730a3; }
+
+  /* Main content */
+  main { flex:1; padding:20px; overflow:auto; }
+  .dashboard { display:none; }
+  .dashboard.active { display:block; }
+
+  .card { background:var(--card-bg); padding:20px; border-radius:12px; box-shadow:0 2px 8px rgba(0,0,0,0.05); margin-bottom:20px; transition:0.3s; }
+  .card:hover { box-shadow:0 4px 12px rgba(0,0,0,0.1); }
+
+  table { width:100%; border-collapse:collapse; margin-top:10px; }
+  th, td { padding:10px; text-align:left; border-bottom:1px solid #ddd; }
+  th { background:var(--card-bg); }
+  tr:hover { background: rgba(0,0,0,0.05); }
+  .status { padding:5px 10px; border-radius:12px; color:#fff; font-weight:bold; font-size:0.85rem; display:inline-block; transition:0.3s; }
+  .pending { background: var(--status-pending); }
+  .assigned { background: var(--status-assigned); }
+  .resolved { background: var(--status-resolved); }
+
+  .ticket-actions { display:flex; gap:10px; }
+
+  /* Buttons */
+  button.assign { background:#10b981; }
+  button.assign:hover { background:#047857; }
+  button.create { background:#3b82f6; }
+  button.create:hover { background:#1d4ed8; }
+
+  /* Logo CSS */
+  .logo { font-size:2rem; font-weight:bold; text-align:center; margin-bottom:30px; color:var(--primary);}
+  .logo span { color:#3b82f6;}
+
+  /* Modal */
+  .modal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); justify-content:center; align-items:center; }
+  .modal.active { display:flex; }
+  .modal-content { background:var(--card-bg); padding:20px; border-radius:12px; width:300px; }
+  .modal-content input, .modal-content textarea { width:100%; margin-bottom:10px; padding:8px; border-radius:6px; border:1px solid #ccc; }
+  .modal-content button { width:100%; }
+
+  /* Theme toggle */
+  #themeToggle { margin-top:20px; padding:8px; border:none; border-radius:6px; cursor:pointer; background:var(--primary); color:#fff; }
+</style>
+</head>
+<body data-theme="light">
+
+<!-- Sidebar -->
+<nav>
+  <div class="logo">Ticket<span>Hotel</span></div>
+  <div class="user" id="currentUser">Bonjour Admin</div>
+  <button onclick="switchRole('admin')">Dashboard Admin</button>
+  <button onclick="switchRole('technician')">Dashboard Technicien</button>
+  <button onclick="switchRole('client')">Dashboard Client</button>
+  <button onclick="switchRole('superadmin')">Dashboard SuperAdmin</button>
+  <button id="themeToggle">🌗 Mode Sombre</button>
+</nav>
+
+<!-- Main content -->
+<main>
+  <!-- Admin -->
+  <div id="adminDash" class="dashboard">
+    <div class="card">
+      <h3>Tickets à gérer</h3>
+      <table>
+        <thead><tr><th>Titre</th><th>Client</th><th>Technicien</th><th>Statut</th><th>Actions</th></tr></thead>
+        <tbody id="adminTickets"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Technicien -->
+  <div id="techDash" class="dashboard">
+    <div class="card">
+      <h3>Tickets assignés</h3>
+      <table>
+        <thead><tr><th>Titre</th><th>Client</th><th>Statut</th></tr></thead>
+        <tbody id="techTickets"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Client -->
+  <div id="clientDash" class="dashboard">
+    <div class="card">
+      <h3>Vos tickets</h3>
+      <button class="create" onclick="openModal()">Créer un ticket</button>
+      <table>
+        <thead><tr><th>Titre</th><th>Statut</th></tr></thead>
+        <tbody id="clientTickets"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- SuperAdmin -->
+  <div id="superDash" class="dashboard">
+    <div class="card">
+      <h3>Vue globale tickets</h3>
+      <table>
+        <thead><tr><th>Titre</th><th>Client</th><th>Technicien</th><th>Statut</th></tr></thead>
+        <tbody id="superTickets"></tbody>
+      </table>
+    </div>
+  </div>
+</main>
+
+<!-- Modal Création Ticket -->
+<div id="ticketModal" class="modal">
+  <div class="modal-content">
+    <h3>Nouveau Ticket</h3>
+    <input type="text" id="ticketTitle" placeholder="Titre du ticket">
+    <textarea id="ticketDesc" placeholder="Description"></textarea>
+    <button onclick="createTicket()">Créer</button>
+  </div>
+</div>
+
+<script>
+  const tickets = [
+    { title: "Wifi ne fonctionne pas", client:"Alice", tech:"Bob", status:"pending" },
+    { title: "Climatisation panne", client:"Charlie", tech:"Dana", status:"assigned" },
+    { title: "Tv ne marche pas", client:"Alice", tech:"Bob", status:"resolved" },
+  ];
+
+  const currentUserEl = document.getElementById("currentUser");
+  const themeBtn = document.getElementById("themeToggle");
+  themeBtn.addEventListener("click", () => {
+    const body = document.body;
+    if(body.dataset.theme==="light") { body.dataset.theme="dark"; themeBtn.textContent="🌞 Mode Clair"; }
+    else { body.dataset.theme="light"; themeBtn.textContent="🌗 Mode Sombre"; }
+  });
+
+  function switchRole(role) {
+    document.querySelectorAll('.dashboard').forEach(d => d.classList.remove('active'));
+    if(role==="admin") { document.getElementById('adminDash').classList.add('active'); currentUserEl.textContent="Bonjour Admin"; renderAdminTickets(); }
+    if(role==="technician") { document.getElementById('techDash').classList.add('active'); currentUserEl.textContent="Bonjour Technicien"; renderTechTickets(); }
+    if(role==="client") { document.getElementById('clientDash').classList.add('active'); currentUserEl.textContent="Bonjour Client"; renderClientTickets(); }
+    if(role==="superadmin") { document.getElementById('superDash').classList.add('active'); currentUserEl.textContent="Bonjour SuperAdmin"; renderSuperTickets(); }
+  }
+
+  function renderAdminTickets() {
+    const tbody = document.getElementById('adminTickets'); tbody.innerHTML="";
+    tickets.forEach((t,i)=>{
+      tbody.innerHTML += `<tr>
+        <td>${t.title}</td>
+        <td>${t.client}</td>
+        <td>${t.tech}</td>
+        <td><span class="status ${t.status}">${t.status}</span></td>
+        <td class="ticket-actions"><button class="assign" onclick="assignTicket(${i})">Assigner</button></td>
+      </tr>`;
+    });
+  }
+
+  function assignTicket(i) {
+    const tech = prompt("Nom du technicien à assigner :", tickets[i].tech);
+    if(tech) { tickets[i].tech = tech; tickets[i].status="assigned"; renderAdminTickets(); alert(`Ticket "${tickets[i].title}" assigné à ${tech}`); }
+  }
+
+  function renderTechTickets() {
+    const tbody = document.getElementById('techTickets'); tbody.innerHTML="";
+    tickets.filter(t=>t.tech==="Bob").forEach(t=>{
+      tbody.innerHTML += `<tr>
+        <td>${t.title}</td><td>${t.client}</td><td><span class="status ${t.status}">${t.status}</span></td>
+      </tr>`;
+    });
+  }
+
+  function renderClientTickets() {
+    const tbody = document.getElementById('clientTickets'); tbody.innerHTML="";
+    tickets.filter(t=>t.client==="Alice").forEach(t=>{
+      tbody.innerHTML += `<tr><td>${t.title}</td><td><span class="status ${t.status}">${t.status}</span></td></tr>`;
+    });
+  }
+
+  function renderSuperTickets() {
+    const tbody = document.getElementById('superTickets'); tbody.innerHTML="";
+    tickets.forEach(t=>{
+      tbody.innerHTML += `<tr><td>${t.title}</td><td>${t.client}</td><td>${t.tech}</td><td><span class="status ${t.status}">${t.status}</span></td></tr>`;
+    });
+  }
+
+  // Modal ticket client
+  const modal = document.getElementById('ticketModal');
+  function openModal() { modal.classList.add('active'); }
+  function createTicket() {
+    const title = document.getElementById('ticketTitle').value;
+    if(title) { tickets.push({title, client:"Alice", tech:"", status:"pending"}); modal.classList.remove('active'); renderClientTickets(); alert(`Ticket "${title}" créé !`); document.getElementById('ticketTitle').value=""; document.getElementById('ticketDesc').value=""; }
+  }
+
+  // Init
+  switchRole('admin');
+</script>
+
+</body>
+</html>
